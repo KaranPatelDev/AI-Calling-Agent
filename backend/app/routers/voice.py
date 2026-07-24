@@ -30,7 +30,9 @@ def answer(call_id: uuid.UUID, db: Session = Depends(get_db)):
     script = _render_script(call) if (call := db.get(Call, call_id)) else ""
     plivo_xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
-        f'<Response><Speak voice="WOMAN">{_escape(script)}</Speak></Response>'
+        '<Response><Speak voice="Polly.Aditi" language="en-IN">'
+        f'<prosody rate="90%">{_escape(script)}</prosody>'
+        "</Speak></Response>"
     )
     return Response(content=plivo_xml, media_type="application/xml")
 
