@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Form
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db import get_db
 from app.models import Call, CallStatus
 
@@ -27,7 +28,22 @@ def _render_script(call: Call) -> str:
 @router.post("/answer/{call_id}")
 def answer(call_id: uuid.UUID, db: Session = Depends(get_db)):
     script = _render_script(call) if (call := db.get(Call, call_id)) else ""
-    plivo_xml = f'<?xml version="1.0" encoding="UTF-8"?><Response><Speak>{_escape(script)}</Speak></Response>'
+    plivo_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f'<Response><Speak voice="Polly.Kajal" language="en-IN">{_escape(script)}</Speak></Response>'
+    )
+    return Response(content=plivo_xml, media_type="application/xml")
+
+
+@router.post("/inbound")
+def inbound_call():
+    """Forwards any call to the Plivo number straight to your real phone."""
+    plivo_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f'<Response><Dial callerId="{settings.plivo_from_number}">'
+        f'<Number>{settings.forward_to_number}</Number>'
+        "</Dial></Response>"
+    )
     return Response(content=plivo_xml, media_type="application/xml")
 
 

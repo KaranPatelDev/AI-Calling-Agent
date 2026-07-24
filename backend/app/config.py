@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     plivo_auth_id: str = ""
     plivo_auth_token: str = ""
     plivo_from_number: str = ""
+    forward_to_number: str = ""
     public_base_url: str = "http://localhost:8000"
 
     class Config:
