@@ -12,6 +12,7 @@ class CallStatus:
     CALLING = "calling"
     COMPLETED = "completed"
     FAILED = "failed"
+    NO_ANSWER = "no_answer"
     CANCELLED = "cancelled"
 
 

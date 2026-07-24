@@ -49,11 +49,23 @@ def inbound_call():
     return Response(content=plivo_xml, media_type="application/xml")
 
 
+_HANGUP_OUTCOMES = {
+    "NORMAL_CLEARING": (CallStatus.COMPLETED, None),
+    "NO_ANSWER": (CallStatus.NO_ANSWER, "No answer from recipient"),
+    "USER_BUSY": (CallStatus.NO_ANSWER, "Recipient's line was busy"),
+    "CALL_REJECTED": (CallStatus.NO_ANSWER, "Call was rejected by recipient"),
+}
+
+
 @router.post("/hangup/{call_id}")
 def hangup(call_id: uuid.UUID, HangupCause: str = Form(default=""), db: Session = Depends(get_db)):
     call = db.get(Call, call_id)
     if call:
-        call.status = CallStatus.COMPLETED if HangupCause == "NORMAL_CLEARING" else CallStatus.FAILED
+        status, error_message = _HANGUP_OUTCOMES.get(
+            HangupCause, (CallStatus.FAILED, f"Call ended unexpectedly ({HangupCause or 'unknown reason'})")
+        )
+        call.status = status
+        call.error_message = error_message
         db.commit()
     return {"ok": True}
 

@@ -446,6 +446,11 @@ tbody tr:hover {
   color: var(--danger);
 }
 
+.badge-no_answer {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
 .badge-cancelled {
   background: var(--gray-bg);
   color: var(--muted);

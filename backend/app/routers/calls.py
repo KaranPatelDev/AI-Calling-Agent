@@ -44,15 +44,31 @@ def list_calls(db: Session = Depends(get_db)):
     return db.query(Call).order_by(Call.created_at.desc()).all()
 
 
-@router.delete("/{call_id}", response_model=CallOut)
-def cancel_scheduled_call(call_id: uuid.UUID, db: Session = Depends(get_db)):
+_TERMINAL_STATUSES = (CallStatus.COMPLETED, CallStatus.FAILED, CallStatus.NO_ANSWER, CallStatus.CANCELLED)
+
+
+@router.delete("/{call_id}")
+def delete_call(call_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Cancels a pending/scheduled call, or permanently removes a finished one from history."""
     call = db.get(Call, call_id)
     if call is None:
         raise HTTPException(status_code=404, detail="Call not found")
-    if call.status not in (CallStatus.PENDING, CallStatus.SCHEDULED):
-        raise HTTPException(status_code=400, detail="Only pending/scheduled calls can be cancelled")
-    cancel_call(call.id)
-    call.status = CallStatus.CANCELLED
+
+    if call.status in (CallStatus.PENDING, CallStatus.SCHEDULED):
+        cancel_call(call.id)
+        call.status = CallStatus.CANCELLED
+        db.commit()
+        db.refresh(call)
+        return CallOut.model_validate(call)
+
+    db.delete(call)
     db.commit()
-    db.refresh(call)
-    return call
+    return {"ok": True}
+
+
+@router.delete("")
+def clear_call_history(db: Session = Depends(get_db)):
+    """Permanently deletes all finished calls (completed/failed/no_answer/cancelled)."""
+    deleted = db.query(Call).filter(Call.status.in_(_TERMINAL_STATUSES)).delete(synchronize_session=False)
+    db.commit()
+    return {"deleted": deleted}

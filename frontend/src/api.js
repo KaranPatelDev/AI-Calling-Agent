@@ -26,6 +26,7 @@ export const api = {
   listCalls: () => request("/api/calls"),
   createCalls: (payload) => request("/api/calls", { method: "POST", body: JSON.stringify(payload) }),
   cancelCall: (id) => request(`/api/calls/${id}`, { method: "DELETE" }),
+  clearCallHistory: () => request("/api/calls", { method: "DELETE" }),
   parseUpload: (file) => {
     const form = new FormData();
     form.append("file", file);

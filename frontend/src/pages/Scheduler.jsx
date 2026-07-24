@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
 
 import { api } from "../api.js";
-import AudienceTabs from "../components/AudienceTabs.jsx";
 import AudienceToggle from "../components/AudienceToggle.jsx";
 import RecipientsEditor from "../components/RecipientsEditor.jsx";
 import ScriptEditor from "../components/ScriptEditor.jsx";
+import Tabs from "../components/Tabs.jsx";
 import { useAudienceScript } from "../hooks/useAudienceScript.js";
+
+const AUDIENCE_FILTER_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "buyer", label: "Buyers" },
+  { value: "seller", label: "Sellers" },
+];
 
 function toLocalInputValue(date) {
   const pad = (n) => String(n).padStart(2, "0");
@@ -135,7 +141,7 @@ export default function Scheduler() {
         </div>
       </div>
 
-      <AudienceTabs value={upcomingFilter} onChange={setUpcomingFilter} />
+      <Tabs options={AUDIENCE_FILTER_OPTIONS} value={upcomingFilter} onChange={setUpcomingFilter} />
 
       <div className="table-card">
         {loadingUpcoming ? (
