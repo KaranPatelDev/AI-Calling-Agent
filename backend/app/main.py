@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, calls, inbound, settings, uploads, voice
+from app.routers import auth, calls, inbound, scripts, settings, uploads, voice
 from app.scheduler import scheduler
 
 app = FastAPI(title="Calling Agent")
@@ -19,6 +19,7 @@ app.include_router(voice.router)
 app.include_router(uploads.router)
 app.include_router(settings.router)
 app.include_router(inbound.router)
+app.include_router(scripts.router)
 
 
 @app.on_event("startup")

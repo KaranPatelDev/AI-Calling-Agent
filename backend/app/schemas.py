@@ -62,3 +62,19 @@ class InboundCallOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ScriptTemplateIn(BaseModel):
+    name: str
+    script_text: str
+
+
+class ScriptTemplateOut(BaseModel):
+    id: uuid.UUID
+    name: str
+    script_text: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

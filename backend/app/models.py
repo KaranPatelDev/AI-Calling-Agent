@@ -63,3 +63,13 @@ class AppSettings(Base):
     id = Column(Integer, primary_key=True)
     buyer_script = Column(Text, nullable=True)
     seller_script = Column(Text, nullable=True)
+
+
+class ScriptTemplate(Base):
+    __tablename__ = "script_templates"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    script_text = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

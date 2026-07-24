@@ -10,6 +10,13 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
 
+  const [scripts, setScripts] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [draftName, setDraftName] = useState("");
+  const [draftText, setDraftText] = useState("");
+  const [savingScript, setSavingScript] = useState(false);
+  const [scriptStatus, setScriptStatus] = useState("");
+
   useEffect(() => {
     api
       .getScriptSettings()
@@ -19,7 +26,16 @@ export default function Settings() {
       })
       .catch((err) => setStatus(`Failed to load: ${err.message}`))
       .finally(() => setLoading(false));
+    refreshScripts();
   }, []);
+
+  async function refreshScripts() {
+    try {
+      setScripts(await api.listScripts());
+    } catch (err) {
+      setScriptStatus(`Failed to load scripts: ${err.message}`);
+    }
+  }
 
   async function save(e) {
     e.preventDefault();
@@ -32,6 +48,55 @@ export default function Settings() {
       setStatus(`Failed to save: ${err.message}`);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function startNewScript() {
+    setEditingId(null);
+    setDraftName("");
+    setDraftText("");
+    setScriptStatus("");
+  }
+
+  function startEditScript(script) {
+    setEditingId(script.id);
+    setDraftName(script.name);
+    setDraftText(script.script_text);
+    setScriptStatus("");
+  }
+
+  async function saveScript(e) {
+    e.preventDefault();
+    if (!draftName.trim() || !draftText.trim()) {
+      setScriptStatus("Give the script a name and some text.");
+      return;
+    }
+    setSavingScript(true);
+    setScriptStatus("");
+    try {
+      const payload = { name: draftName.trim(), script_text: draftText };
+      if (editingId) {
+        await api.updateScript(editingId, payload);
+      } else {
+        await api.createScript(payload);
+      }
+      startNewScript();
+      refreshScripts();
+    } catch (err) {
+      setScriptStatus(`Save failed: ${err.message}`);
+    } finally {
+      setSavingScript(false);
+    }
+  }
+
+  async function deleteScript(id) {
+    if (!window.confirm("Delete this saved script?")) return;
+    try {
+      await api.deleteScript(id);
+      if (editingId === id) startNewScript();
+      refreshScripts();
+    } catch (err) {
+      setScriptStatus(`Delete failed: ${err.message}`);
     }
   }
 
@@ -66,6 +131,72 @@ export default function Settings() {
           {status && <p className="status">{status}</p>}
         </div>
       </form>
+
+      <div className="topbar">
+        <div>
+          <h1 style={{ fontSize: "1.15rem" }}>Script library</h1>
+          <p>Save as many named scripts as you want — pick any of them from a dropdown when placing a call.</p>
+        </div>
+      </div>
+
+      <form className="card form-card" onSubmit={saveScript}>
+        <div className="field-group">
+          <label className="field-label">Script name</label>
+          <input
+            placeholder="e.g. Diwali offer follow-up"
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+          />
+        </div>
+
+        <ScriptEditor value={draftText} onChange={setDraftText} label="Script text" />
+
+        <div className="row">
+          <button type="submit" disabled={savingScript}>
+            {savingScript ? "Saving…" : editingId ? "Update script" : "Save as new script"}
+          </button>
+          {editingId && (
+            <button type="button" className="btn-secondary" onClick={startNewScript}>
+              Cancel edit
+            </button>
+          )}
+          {scriptStatus && <p className="status">{scriptStatus}</p>}
+        </div>
+      </form>
+
+      <div className="table-card">
+        {scripts.length === 0 ? (
+          <div className="empty-state">No saved scripts yet.</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Preview</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {scripts.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.name}</td>
+                  <td>{s.script_text.length > 80 ? `${s.script_text.slice(0, 80)}…` : s.script_text}</td>
+                  <td>
+                    <div className="row">
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => startEditScript(s)}>
+                        Edit
+                      </button>
+                      <button type="button" className="btn-danger btn-sm" onClick={() => deleteScript(s.id)}>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

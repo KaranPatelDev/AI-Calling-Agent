@@ -24,7 +24,14 @@ const OUTCOME_OPTIONS = [
   { value: "completed", label: "Successful" },
   { value: "failed", label: "Not placed" },
   { value: "no_answer", label: "No answer" },
+  { value: "scheduled", label: "Scheduled" },
 ];
+
+function matchesOutcome(call, outcomeFilter) {
+  if (outcomeFilter === "all") return true;
+  if (outcomeFilter === "scheduled") return call.status === "scheduled" || call.status === "pending";
+  return call.status === outcomeFilter;
+}
 
 function computeStats(calls) {
   const completed = calls.filter((c) => c.status === "completed").length;
@@ -95,7 +102,7 @@ export default function Dashboard() {
 
   const filtered = calls
     .filter((c) => audienceFilter === "all" || c.audience === audienceFilter)
-    .filter((c) => outcomeFilter === "all" || c.status === outcomeFilter);
+    .filter((c) => matchesOutcome(c, outcomeFilter));
   const stats = computeStats(filtered);
   const interestRate = stats.attempted === 0 ? 0 : Math.round((inboundCalls.length / stats.attempted) * 100);
 

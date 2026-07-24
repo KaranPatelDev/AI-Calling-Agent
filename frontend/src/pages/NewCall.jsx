@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import AudienceToggle from "../components/AudienceToggle.jsx";
 import RecipientsEditor from "../components/RecipientsEditor.jsx";
 import ScriptEditor from "../components/ScriptEditor.jsx";
+import ScriptPicker from "../components/ScriptPicker.jsx";
 import { useAudienceScript } from "../hooks/useAudienceScript.js";
 
 export default function NewCall() {
@@ -47,6 +48,8 @@ export default function NewCall() {
         <AudienceToggle value={audience} onChange={setAudience} />
 
         <RecipientsEditor recipients={recipients} setRecipients={setRecipients} />
+
+        <ScriptPicker onChange={setScriptText} />
 
         <ScriptEditor value={scriptText} onChange={setScriptText} />
 
