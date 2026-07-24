@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db
-from app.models import Call, CallStatus
+from app.models import Call, CallStatus, InboundCall, InboundCallStatus
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 
@@ -38,8 +38,23 @@ def answer(call_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/inbound")
-def inbound_call():
-    """Forwards any call to the Plivo number straight to your real phone."""
+def inbound_call(
+    From: str = Form(default=""),
+    CallUUID: str = Form(default=""),
+    db: Session = Depends(get_db),
+):
+    """Logs the callback (for interest tracking) and forwards it to your real phone."""
+    match = db.query(Call).filter(Call.phone_number == From).order_by(Call.created_at.desc()).first()
+    db.add(
+        InboundCall(
+            from_number=From,
+            matched_name=match.recipient_name if match else None,
+            matched_organization=match.organization if match else None,
+            provider_call_id=CallUUID,
+        )
+    )
+    db.commit()
+
     plivo_xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         f'<Response><Dial callerId="{settings.plivo_from_number}">'
@@ -47,6 +62,21 @@ def inbound_call():
         "</Dial></Response>"
     )
     return Response(content=plivo_xml, media_type="application/xml")
+
+
+@router.post("/inbound-hangup")
+def inbound_hangup(
+    CallUUID: str = Form(default=""),
+    Duration: str = Form(default=""),
+    db: Session = Depends(get_db),
+):
+    """Static hangup callback for inbound calls (no per-call id exists until Plivo posts CallUUID)."""
+    inbound = db.query(InboundCall).filter(InboundCall.provider_call_id == CallUUID).first()
+    if inbound:
+        inbound.status = InboundCallStatus.COMPLETED
+        inbound.duration_seconds = int(Duration) if Duration.isdigit() else None
+        db.commit()
+    return {"ok": True}
 
 
 _HANGUP_OUTCOMES = {

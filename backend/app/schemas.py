@@ -49,3 +49,16 @@ class ScriptSettings(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class InboundCallOut(BaseModel):
+    id: uuid.UUID
+    from_number: str
+    matched_name: str | None
+    matched_organization: str | None
+    status: str
+    duration_seconds: int | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 
 import { api } from "../api.js";
+import BuyerSellerChart from "../components/BuyerSellerChart.jsx";
 import Tabs from "../components/Tabs.jsx";
+import TrendChart from "../components/TrendChart.jsx";
 
 const STATS = [
   { key: "total", label: "Total calls" },
@@ -25,17 +27,27 @@ const OUTCOME_OPTIONS = [
 ];
 
 function computeStats(calls) {
+  const completed = calls.filter((c) => c.status === "completed").length;
+  const no_answer = calls.filter((c) => c.status === "no_answer").length;
+  const failed = calls.filter((c) => c.status === "failed").length;
+  const attempted = completed + no_answer + failed;
+  const pct = (n) => (attempted === 0 ? 0 : Math.round((n / attempted) * 100));
   return {
     total: calls.length,
-    completed: calls.filter((c) => c.status === "completed").length,
-    no_answer: calls.filter((c) => c.status === "no_answer").length,
-    failed: calls.filter((c) => c.status === "failed").length,
+    completed,
+    no_answer,
+    failed,
     scheduled: calls.filter((c) => c.status === "scheduled" || c.status === "pending").length,
+    attempted,
+    completedPct: pct(completed),
+    noAnswerPct: pct(no_answer),
+    failedPct: pct(failed),
   };
 }
 
 export default function Dashboard() {
   const [calls, setCalls] = useState([]);
+  const [inboundCalls, setInboundCalls] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [audienceFilter, setAudienceFilter] = useState("all");
@@ -43,7 +55,9 @@ export default function Dashboard() {
 
   async function refresh() {
     try {
-      setCalls(await api.listCalls());
+      const [callsData, inboundData] = await Promise.all([api.listCalls(), api.listInboundCalls()]);
+      setCalls(callsData);
+      setInboundCalls(inboundData);
       setError("");
     } catch (err) {
       setError(err.message);
@@ -83,6 +97,7 @@ export default function Dashboard() {
     .filter((c) => audienceFilter === "all" || c.audience === audienceFilter)
     .filter((c) => outcomeFilter === "all" || c.status === outcomeFilter);
   const stats = computeStats(filtered);
+  const interestRate = stats.attempted === 0 ? 0 : Math.round((inboundCalls.length / stats.attempted) * 100);
 
   return (
     <div>
@@ -109,8 +124,16 @@ export default function Dashboard() {
           <div className="stat-card" key={s.key}>
             <div className="stat-label">{s.label}</div>
             <div className="stat-value">{stats[s.key]}</div>
+            {s.key === "completed" && <div className="stat-sublabel">{stats.completedPct}% of attempted calls</div>}
+            {s.key === "no_answer" && <div className="stat-sublabel">{stats.noAnswerPct}% of attempted calls</div>}
+            {s.key === "failed" && <div className="stat-sublabel">{stats.failedPct}% of attempted calls</div>}
           </div>
         ))}
+      </div>
+
+      <div className="charts-grid">
+        <BuyerSellerChart calls={filtered} />
+        <TrendChart calls={filtered} />
       </div>
 
       {error && <p className="status">{error}</p>}
@@ -152,6 +175,61 @@ export default function Dashboard() {
                     <button type="button" className="btn-danger btn-sm" onClick={() => handleDelete(c.id)}>
                       Delete
                     </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="topbar">
+        <div>
+          <h1 style={{ fontSize: "1.15rem" }}>Inbound interest</h1>
+          <p>People who called your Plivo number back — a sign they're genuinely interested.</p>
+        </div>
+      </div>
+
+      <div className="stat-grid">
+        <div className="stat-card">
+          <div className="stat-label">Total callbacks</div>
+          <div className="stat-value">{inboundCalls.length}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Interest rate</div>
+          <div className="stat-value">{interestRate}%</div>
+          <div className="stat-sublabel">callbacks ÷ attempted calls</div>
+        </div>
+      </div>
+
+      <div className="table-card">
+        {inboundCalls.length === 0 ? (
+          <div className="empty-state">No callbacks yet.</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Caller</th>
+                <th>Phone</th>
+                <th>Time</th>
+                <th>Duration</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {inboundCalls.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    {c.matched_name || "Unknown caller"}
+                    {c.matched_organization ? ` (${c.matched_organization})` : ""}
+                  </td>
+                  <td>{c.from_number}</td>
+                  <td>{new Date(c.created_at).toLocaleString()}</td>
+                  <td>{c.duration_seconds != null ? `${c.duration_seconds}s` : "—"}</td>
+                  <td>
+                    <span className={`badge badge-${c.status === "completed" ? "completed" : "scheduled"}`}>
+                      {c.status}
+                    </span>
                   </td>
                 </tr>
               ))}

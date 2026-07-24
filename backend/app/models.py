@@ -38,6 +38,24 @@ class Call(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class InboundCallStatus:
+    RINGING = "ringing"
+    COMPLETED = "completed"
+
+
+class InboundCall(Base):
+    __tablename__ = "inbound_calls"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    from_number = Column(String, nullable=False)
+    matched_name = Column(String, nullable=True)
+    matched_organization = Column(String, nullable=True)
+    provider_call_id = Column(String, nullable=True, index=True)
+    status = Column(String, nullable=False, default=InboundCallStatus.RINGING)
+    duration_seconds = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class AppSettings(Base):
     # ponytail: single-row table (id always 1) — this is a single-user app, no need for a per-user settings table.
     __tablename__ = "app_settings"

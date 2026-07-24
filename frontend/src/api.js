@@ -24,6 +24,7 @@ async function request(path, options = {}) {
 
 export const api = {
   listCalls: () => request("/api/calls"),
+  listInboundCalls: () => request("/api/inbound-calls"),
   createCalls: (payload) => request("/api/calls", { method: "POST", body: JSON.stringify(payload) }),
   cancelCall: (id) => request(`/api/calls/${id}`, { method: "DELETE" }),
   clearCallHistory: () => request("/api/calls", { method: "DELETE" }),
