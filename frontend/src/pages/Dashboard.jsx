@@ -29,6 +29,14 @@ const OUTCOME_OPTIONS = [
   { value: "scheduled", label: "Scheduled" },
 ];
 
+const EXPORT_OPTIONS = [
+  { value: "failed", label: "Not placed" },
+  { value: "cut_off", label: "Cut off" },
+  { value: "no_answer", label: "No answer" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "all", label: "Download all" },
+];
+
 function matchesOutcome(call, outcomeFilter) {
   if (outcomeFilter === "all") return true;
   if (outcomeFilter === "scheduled") return call.status === "scheduled" || call.status === "pending";
@@ -63,6 +71,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [audienceFilter, setAudienceFilter] = useState("all");
   const [outcomeFilter, setOutcomeFilter] = useState("all");
+  const [exporting, setExporting] = useState(false);
+  const [deletingFilter, setDeletingFilter] = useState(false);
 
   async function refresh() {
     try {
@@ -104,6 +114,36 @@ export default function Dashboard() {
     }
   }
 
+  async function handleExport(e) {
+    const filter = e.target.value;
+    e.target.value = "";
+    if (!filter) return;
+    setExporting(true);
+    try {
+      await api.exportCalls(filter);
+    } catch (err) {
+      setError(`Download failed: ${err.message}`);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleDeleteFilter() {
+    const outcomeLabel = OUTCOME_OPTIONS.find((o) => o.value === outcomeFilter)?.label || outcomeFilter;
+    if (!window.confirm(`Permanently delete every call currently shown under "${outcomeLabel}"? This can't be undone.`)) {
+      return;
+    }
+    setDeletingFilter(true);
+    try {
+      await api.deleteCallsBulk(outcomeFilter, audienceFilter);
+      refresh();
+    } catch (err) {
+      setError(`Delete failed: ${err.message}`);
+    } finally {
+      setDeletingFilter(false);
+    }
+  }
+
   const filtered = calls
     .filter((c) => audienceFilter === "all" || c.audience === audienceFilter)
     .filter((c) => matchesOutcome(c, outcomeFilter));
@@ -118,6 +158,22 @@ export default function Dashboard() {
           <p>Overview of every call placed or scheduled.</p>
         </div>
         <div className="row">
+          <select
+            className="btn-ghost"
+            defaultValue=""
+            onChange={handleExport}
+            disabled={exporting}
+            aria-label="Download as Excel"
+          >
+            <option value="" disabled>
+              {exporting ? "Downloading…" : "Download"}
+            </option>
+            {EXPORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
           <button type="button" className="btn-ghost" onClick={handleClearHistory}>
             Clear history
           </button>
@@ -128,7 +184,12 @@ export default function Dashboard() {
       </div>
 
       <Tabs options={AUDIENCE_OPTIONS} value={audienceFilter} onChange={setAudienceFilter} />
-      <Tabs options={OUTCOME_OPTIONS} value={outcomeFilter} onChange={setOutcomeFilter} />
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <Tabs options={OUTCOME_OPTIONS} value={outcomeFilter} onChange={setOutcomeFilter} />
+        <button type="button" className="btn-danger btn-sm" onClick={handleDeleteFilter} disabled={deletingFilter}>
+          {deletingFilter ? "Deleting…" : `Delete all in "${OUTCOME_OPTIONS.find((o) => o.value === outcomeFilter)?.label}"`}
+        </button>
+      </div>
 
       <div className="stat-grid">
         {STATS.map((s) => (

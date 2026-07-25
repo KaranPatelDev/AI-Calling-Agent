@@ -75,13 +75,16 @@ def answer(call_id: uuid.UUID, db: Session = Depends(get_db)):
     script = _render_script(call) if call else ""
     rate = _get_speech_rate(db, call)
     body = _build_ssml_body(script)
-    # ponytail: Kajal is Amazon Polly's other hi-IN female voice — neural engine, softer/more
-    # natural than the standard Aditi voice. Neural voices were previously silent on a Plivo
-    # Free Trial account; test with a real call after any account-tier change.
+    # ponytail: reverted from Polly.Kajal (neural) back to the standard Polly.Aditi voice —
+    # Kajal requires Plivo's neural TTS engine, which this Plivo account can't reach reliably
+    # (previously silent calls, then calls hanging up right after pickup once Kajal was
+    # reintroduced). Aditi is standard-engine and known stable. Softened its tone a little with
+    # a slight pitch lift instead, since a genuinely different soft female Hindi voice isn't
+    # available through Plivo without a neural-capable account.
     plivo_xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
-        '<Response><Speak voice="Polly.Kajal" language="hi-IN">'
-        f'<prosody rate="{rate}%">{body}</prosody>'
+        '<Response><Speak voice="Polly.Aditi" language="hi-IN">'
+        f'<prosody rate="{rate}%" pitch="+8%">{body}</prosody>'
         "</Speak></Response>"
     )
     return Response(content=plivo_xml, media_type="application/xml")

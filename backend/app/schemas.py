@@ -1,16 +1,38 @@
+import re
 import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 Audience = Literal["buyer", "seller"]
+
+
+def normalize_phone(raw: str) -> str:
+    """Accepts any human-written Indian number format (spaces, dashes, leading 0, with/without
+    +91) and normalizes it to E.164 so Plivo can dial it."""
+    raw = raw.strip()
+    has_plus = raw.startswith("+")
+    digits = re.sub(r"\D", "", raw)
+    if not digits:
+        return raw
+    if has_plus:
+        return f"+{digits}"
+    digits = digits.lstrip("0")  # drop a domestic trunk-prefix zero (landlines/STD codes)
+    if digits.startswith("91") and len(digits) > 10:
+        return f"+{digits}"
+    return f"+91{digits}"
 
 
 class Recipient(BaseModel):
     name: str
     phone: str
     organization: str | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def _normalize_phone(cls, v: str) -> str:
+        return normalize_phone(v)
 
 
 class CreateCallsRequest(BaseModel):
@@ -43,6 +65,11 @@ class ParsedRecipient(BaseModel):
     name: str
     phone: str
     organization: str | None = None
+
+    @field_validator("phone")
+    @classmethod
+    def _normalize_phone(cls, v: str) -> str:
+        return normalize_phone(v)
 
 
 class ScriptSettings(BaseModel):

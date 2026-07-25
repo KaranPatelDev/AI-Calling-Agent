@@ -28,6 +28,31 @@ export const api = {
   createCalls: (payload) => request("/api/calls", { method: "POST", body: JSON.stringify(payload) }),
   cancelCall: (id) => request(`/api/calls/${id}`, { method: "DELETE" }),
   clearCallHistory: () => request("/api/calls", { method: "DELETE" }),
+  deleteCallsBulk: async (outcome, audience) => {
+    const params = new URLSearchParams({ outcome });
+    if (audience) params.set("audience", audience);
+    const res = await fetch(`${BASE_URL}/api/calls/bulk?${params}`, {
+      method: "DELETE",
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (!res.ok) throw new Error((await res.text()) || `Request failed: ${res.status}`);
+    return res.json();
+  },
+  exportCalls: async (filter) => {
+    const res = await fetch(`${BASE_URL}/api/calls/export?filter=${filter}`, {
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (!res.ok) throw new Error((await res.text()) || `Request failed: ${res.status}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `calls_${filter}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
   parseUpload: (file) => {
     const form = new FormData();
     form.append("file", file);
