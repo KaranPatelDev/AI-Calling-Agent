@@ -84,6 +84,8 @@ _HANGUP_OUTCOMES = {
     "NO_ANSWER": (CallStatus.NO_ANSWER, "No answer from recipient"),
     "USER_BUSY": (CallStatus.NO_ANSWER, "Recipient's line was busy"),
     "CALL_REJECTED": (CallStatus.NO_ANSWER, "Call was rejected by recipient"),
+    "NO_USER_RESPONSE": (CallStatus.NO_ANSWER, "No response from recipient"),
+    "NO_ANSWER_TIMEOUT": (CallStatus.NO_ANSWER, "No response from recipient"),
 }
 
 

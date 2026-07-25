@@ -18,6 +18,10 @@ def schedule_call(call_id, run_at):
         args=[call_id],
         id=f"call-{call_id}",
         replace_existing=True,
+        # ponytail: APScheduler's default misfire_grace_time is 1 second — any backend
+        # restart (a deploy, a crash) that's still down 1s past the scheduled time causes
+        # the job to be silently dropped instead of firing late. None = always fire.
+        misfire_grace_time=None,
     )
 
 
