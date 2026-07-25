@@ -19,7 +19,7 @@ router = APIRouter(prefix="/voice", tags=["voice"])
 
 _PLACEHOLDER_RE = re.compile(r"\{\{\s*(name|company|organization)\s*\}\}", re.IGNORECASE)
 _SLOW_RE = re.compile(r"\[\[slow\]\](.*?)\[\[/slow\]\]", re.IGNORECASE | re.DOTALL)
-_MISSED_HANGUP_CAUSES = {"NO_ANSWER", "USER_BUSY", "CALL_REJECTED", "NO_USER_RESPONSE", "NO_ANSWER_TIMEOUT"}
+_MISSED_CALLBACK_SECONDS = 5  # a forwarded callback lasting this long or less counts as missed
 
 
 def _render_script(call: Call) -> str:
@@ -178,15 +178,18 @@ def _schedule_missed_callback(inbound: InboundCall, db: Session):
 def inbound_hangup(
     CallUUID: str = Form(default=""),
     Duration: str = Form(default=""),
-    HangupCause: str = Form(default=""),
     db: Session = Depends(get_db),
 ):
     """Static hangup callback for inbound calls (no per-call id exists until Plivo posts CallUUID)."""
     inbound = db.query(InboundCall).filter(InboundCall.provider_call_id == CallUUID).first()
     if inbound:
+        duration = int(Duration) if Duration.isdigit() else 0
         inbound.status = InboundCallStatus.COMPLETED
-        inbound.duration_seconds = int(Duration) if Duration.isdigit() else None
-        inbound.missed = HangupCause in _MISSED_HANGUP_CAUSES
+        inbound.duration_seconds = duration if Duration.isdigit() else None
+        # ponytail: a forwarded callback that connects but lasts 5s or less is effectively a
+        # miss (rang, no real conversation happened) — duration is a more reliable signal here
+        # than HangupCause, which reports NORMAL_CLEARING even for very short answered calls.
+        inbound.missed = duration <= _MISSED_CALLBACK_SECONDS
         if inbound.missed:
             _schedule_missed_callback(inbound, db)
         db.commit()

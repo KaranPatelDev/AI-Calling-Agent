@@ -37,6 +37,17 @@ const EXPORT_OPTIONS = [
   { value: "all", label: "Download all" },
 ];
 
+const INBOUND_FILTER_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "completed", label: "Completed" },
+  { value: "missed", label: "Missed" },
+];
+
+const INBOUND_EXPORT_OPTIONS = [
+  { value: "missed", label: "Missed" },
+  { value: "completed", label: "Completed" },
+];
+
 function matchesOutcome(call, outcomeFilter) {
   if (outcomeFilter === "all") return true;
   if (outcomeFilter === "scheduled") return call.status === "scheduled" || call.status === "pending";
@@ -73,6 +84,8 @@ export default function Dashboard() {
   const [outcomeFilter, setOutcomeFilter] = useState("all");
   const [exporting, setExporting] = useState(false);
   const [deletingFilter, setDeletingFilter] = useState(false);
+  const [inboundFilter, setInboundFilter] = useState("all");
+  const [inboundExporting, setInboundExporting] = useState(false);
 
   async function refresh() {
     try {
@@ -128,6 +141,20 @@ export default function Dashboard() {
     }
   }
 
+  async function handleExportInbound(e) {
+    const filter = e.target.value;
+    e.target.value = "";
+    if (!filter) return;
+    setInboundExporting(true);
+    try {
+      await api.exportInboundCalls(filter);
+    } catch (err) {
+      setError(`Download failed: ${err.message}`);
+    } finally {
+      setInboundExporting(false);
+    }
+  }
+
   async function handleDeleteFilter() {
     const outcomeLabel = OUTCOME_OPTIONS.find((o) => o.value === outcomeFilter)?.label || outcomeFilter;
     if (!window.confirm(`Permanently delete every call currently shown under "${outcomeLabel}"? This can't be undone.`)) {
@@ -149,6 +176,12 @@ export default function Dashboard() {
     .filter((c) => matchesOutcome(c, outcomeFilter));
   const stats = computeStats(filtered);
   const interestRate = stats.attempted === 0 ? 0 : Math.round((inboundCalls.length / stats.attempted) * 100);
+
+  const inboundCallsFiltered = inboundCalls.filter((c) => {
+    if (inboundFilter === "all") return true;
+    if (inboundFilter === "missed") return c.missed;
+    return !c.missed;
+  });
 
   return (
     <div>
@@ -260,6 +293,24 @@ export default function Dashboard() {
           <h1 style={{ fontSize: "1.15rem" }}>Inbound interest</h1>
           <p>People who called your Plivo number back — a sign they're genuinely interested.</p>
         </div>
+        <div className="row">
+          <select
+            className="select-download"
+            defaultValue=""
+            onChange={handleExportInbound}
+            disabled={inboundExporting}
+            aria-label="Download callbacks as Excel"
+          >
+            <option value="" disabled>
+              {inboundExporting ? "Downloading…" : "Download"}
+            </option>
+            {INBOUND_EXPORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="stat-grid">
@@ -274,9 +325,11 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <Tabs options={INBOUND_FILTER_OPTIONS} value={inboundFilter} onChange={setInboundFilter} />
+
       <div className="table-card">
-        {inboundCalls.length === 0 ? (
-          <div className="empty-state">No callbacks yet.</div>
+        {inboundCallsFiltered.length === 0 ? (
+          <div className="empty-state">No callbacks match this filter.</div>
         ) : (
           <table>
             <thead>
@@ -290,7 +343,7 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {inboundCalls.map((c) => (
+              {inboundCallsFiltered.map((c) => (
                 <tr key={c.id}>
                   <td>
                     {c.matched_name || "Unknown caller"}
@@ -300,8 +353,10 @@ export default function Dashboard() {
                   <td>{new Date(c.created_at).toLocaleString()}</td>
                   <td>{c.duration_seconds != null ? `${c.duration_seconds}s` : "—"}</td>
                   <td>
-                    <span className={`badge badge-${c.status === "completed" ? "completed" : "scheduled"}`}>
-                      {c.missed ? "missed" : c.status}
+                    <span
+                      className={`badge badge-${c.status !== "completed" ? "scheduled" : c.missed ? "missed" : "completed"}`}
+                    >
+                      {c.status !== "completed" ? "ringing" : c.missed ? "missed" : "completed"}
                     </span>
                   </td>
                   <td>

@@ -53,6 +53,21 @@ export const api = {
     a.remove();
     URL.revokeObjectURL(url);
   },
+  exportInboundCalls: async (filter) => {
+    const res = await fetch(`${BASE_URL}/api/inbound-calls/export?filter=${filter}`, {
+      headers: { "x-api-key": getApiKey() },
+    });
+    if (!res.ok) throw new Error((await res.text()) || `Request failed: ${res.status}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `callbacks_${filter}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
   parseUpload: (file) => {
     const form = new FormData();
     form.append("file", file);
