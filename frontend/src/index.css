@@ -474,11 +474,6 @@ tbody tr:hover {
   color: var(--warning);
 }
 
-.badge-voicemail {
-  background: var(--info-bg);
-  color: var(--info);
-}
-
 .status {
   color: var(--warning);
   font-size: 0.88rem;

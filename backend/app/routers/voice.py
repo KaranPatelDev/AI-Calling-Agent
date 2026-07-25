@@ -188,15 +188,12 @@ def hangup(
         cut_off = estimated > 3 and actual is not None and actual < estimated * 0.7
 
         if cut_off:
-            # ponytail: a machine-detected call that hangs up before the script finishes was never
-            # actually recorded start to finish, so it doesn't count as a confirmed voicemail drop —
-            # treat it the same as a human hanging up mid-speech.
             call.status = CallStatus.CUT_OFF
             call.error_message = f"Recipient hung up early (~{actual}s of an estimated ~{int(estimated)}s)"
-        elif call.answered_by_machine:
-            call.status = CallStatus.VOICEMAIL
-            call.error_message = None
         else:
+            # ponytail: Plivo's machine detection isn't reliable enough on Hindi speech to
+            # trust for the outcome status — keep recording call.answered_by_machine from its
+            # webhook, but don't let it flip a completed call to "voicemail" in the UI.
             call.status = CallStatus.COMPLETED
             call.error_message = None
     else:

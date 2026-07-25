@@ -10,7 +10,6 @@ const STATS = [
   { key: "completed", label: "Completed" },
   { key: "no_answer", label: "No answer" },
   { key: "cut_off", label: "Cut off" },
-  { key: "voicemail", label: "Voicemail" },
   { key: "failed", label: "Not placed" },
   { key: "scheduled", label: "Scheduled" },
 ];
@@ -27,7 +26,6 @@ const OUTCOME_OPTIONS = [
   { value: "failed", label: "Not placed" },
   { value: "no_answer", label: "No answer" },
   { value: "cut_off", label: "Cut off" },
-  { value: "voicemail", label: "Voicemail" },
   { value: "scheduled", label: "Scheduled" },
 ];
 
@@ -41,16 +39,14 @@ function computeStats(calls) {
   const completed = calls.filter((c) => c.status === "completed").length;
   const no_answer = calls.filter((c) => c.status === "no_answer").length;
   const cut_off = calls.filter((c) => c.status === "cut_off").length;
-  const voicemail = calls.filter((c) => c.status === "voicemail").length;
   const failed = calls.filter((c) => c.status === "failed").length;
-  const attempted = completed + no_answer + cut_off + voicemail + failed;
+  const attempted = completed + no_answer + cut_off + failed;
   const pct = (n) => (attempted === 0 ? 0 : Math.round((n / attempted) * 100));
   return {
     total: calls.length,
     completed,
     no_answer,
     cut_off,
-    voicemail,
     failed,
     scheduled: calls.filter((c) => c.status === "scheduled" || c.status === "pending").length,
     attempted,
