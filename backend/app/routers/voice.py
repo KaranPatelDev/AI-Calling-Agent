@@ -75,9 +75,12 @@ def answer(call_id: uuid.UUID, db: Session = Depends(get_db)):
     script = _render_script(call) if call else ""
     rate = _get_speech_rate(db, call)
     body = _build_ssml_body(script)
+    # ponytail: Kajal is Amazon Polly's other hi-IN female voice — neural engine, softer/more
+    # natural than the standard Aditi voice. Neural voices were previously silent on a Plivo
+    # Free Trial account; test with a real call after any account-tier change.
     plivo_xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
-        '<Response><Speak voice="Polly.Aditi" language="hi-IN">'
+        '<Response><Speak voice="Polly.Kajal" language="hi-IN">'
         f'<prosody rate="{rate}%">{body}</prosody>'
         "</Speak></Response>"
     )
