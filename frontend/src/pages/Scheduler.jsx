@@ -5,6 +5,7 @@ import AudienceToggle from "../components/AudienceToggle.jsx";
 import RecipientsEditor from "../components/RecipientsEditor.jsx";
 import ScriptEditor from "../components/ScriptEditor.jsx";
 import ScriptPicker from "../components/ScriptPicker.jsx";
+import SpeedControl from "../components/SpeedControl.jsx";
 import Tabs from "../components/Tabs.jsx";
 import { useAudienceScript } from "../hooks/useAudienceScript.js";
 
@@ -27,6 +28,7 @@ export default function Scheduler() {
   const [recipients, setRecipients] = useState([{ name: "", phone: "", organization: "" }]);
   const [scriptText, setScriptText] = useState("");
   const { audience, setAudience } = useAudienceScript(setScriptText);
+  const [speechRate, setSpeechRate] = useState("");
   const [scheduledAt, setScheduledAt] = useState(defaultScheduledAt());
   const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -74,6 +76,7 @@ export default function Scheduler() {
         script_text: scriptText,
         audience,
         scheduled_at: new Date(scheduledAt).toISOString(),
+        speech_rate: speechRate === "" ? null : Number(speechRate),
       });
       setStatus(`Scheduled ${created.length} call(s).`);
       setRecipients([{ name: "", phone: "", organization: "" }]);
@@ -113,6 +116,8 @@ export default function Scheduler() {
         <ScriptPicker onChange={setScriptText} />
 
         <ScriptEditor value={scriptText} onChange={setScriptText} />
+
+        <SpeedControl value={speechRate} onChange={setSpeechRate} />
 
         <div className="field-group">
           <label className="field-label">When</label>

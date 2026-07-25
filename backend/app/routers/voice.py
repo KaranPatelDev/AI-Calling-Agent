@@ -46,7 +46,9 @@ def _build_ssml_body(text: str) -> str:
     return "".join(parts)
 
 
-def _get_speech_rate(db: Session) -> int:
+def _get_speech_rate(db: Session, call: Call | None = None) -> int:
+    if call is not None and call.speech_rate is not None:
+        return call.speech_rate
     row = db.get(AppSettings, 1)
     return row.speech_rate if row else 80
 
@@ -62,7 +64,7 @@ def _estimate_speech_seconds(text: str, rate_pct: int) -> float:
 def answer(call_id: uuid.UUID, db: Session = Depends(get_db)):
     call = db.get(Call, call_id)
     script = _render_script(call) if call else ""
-    rate = _get_speech_rate(db)
+    rate = _get_speech_rate(db, call)
     body = _build_ssml_body(script)
     plivo_xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
@@ -184,7 +186,7 @@ def hangup(
             call.status = CallStatus.VOICEMAIL
             call.error_message = None
         else:
-            rate = _get_speech_rate(db)
+            rate = _get_speech_rate(db, call)
             estimated = _estimate_speech_seconds(call.script_text, rate)
             actual = int(Duration) if Duration.isdigit() else None
             if estimated > 3 and actual is not None and actual < estimated * 0.7:

@@ -37,6 +37,7 @@ class Call(Base):
     provider_call_id = Column(String, nullable=True)
     error_message = Column(Text, nullable=True)
     answered_by_machine = Column(Boolean, nullable=False, default=False)
+    speech_rate = Column(Integer, nullable=True)  # null = use the global default from AppSettings
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

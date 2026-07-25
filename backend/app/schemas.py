@@ -18,6 +18,7 @@ class CreateCallsRequest(BaseModel):
     script_text: str
     audience: Audience
     scheduled_at: datetime | None = None
+    speech_rate: int | None = None
 
 
 class CallOut(BaseModel):
@@ -31,6 +32,7 @@ class CallOut(BaseModel):
     status: str
     provider_call_id: str | None
     error_message: str | None
+    speech_rate: int | None
     created_at: datetime
 
     class Config:

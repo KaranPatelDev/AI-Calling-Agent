@@ -28,6 +28,7 @@ def create_calls(body: CreateCallsRequest, db: Session = Depends(get_db)):
             script_text=body.script_text,
             scheduled_at=run_at,
             status=CallStatus.SCHEDULED if is_future else CallStatus.PENDING,
+            speech_rate=body.speech_rate,
         )
         db.add(call)
         db.flush()
