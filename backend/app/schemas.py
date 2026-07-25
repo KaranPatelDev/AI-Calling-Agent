@@ -48,7 +48,7 @@ class ParsedRecipient(BaseModel):
 class ScriptSettings(BaseModel):
     buyer_script: str | None = None
     seller_script: str | None = None
-    speech_rate: int = 78
+    speech_rate: int = 79
     auto_callback_enabled: bool = True
     missed_callback_script: str | None = None
 
