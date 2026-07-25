@@ -50,7 +50,7 @@ def _get_speech_rate(db: Session, call: Call | None = None) -> int:
     if call is not None and call.speech_rate is not None:
         return call.speech_rate
     row = db.get(AppSettings, 1)
-    return row.speech_rate if row else 80
+    return row.speech_rate if row else 50
 
 
 def _estimate_speech_seconds(text: str, rate_pct: int) -> float:
