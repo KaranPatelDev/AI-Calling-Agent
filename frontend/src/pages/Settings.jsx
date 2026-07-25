@@ -6,7 +6,7 @@ import ScriptEditor from "../components/ScriptEditor.jsx";
 export default function Settings() {
   const [buyerScript, setBuyerScript] = useState("");
   const [sellerScript, setSellerScript] = useState("");
-  const [speechRate, setSpeechRate] = useState(79);
+  const [speechRate, setSpeechRate] = useState(85);
   const [autoCallbackEnabled, setAutoCallbackEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,7 +25,7 @@ export default function Settings() {
       .then((s) => {
         setBuyerScript(s.buyer_script || "");
         setSellerScript(s.seller_script || "");
-        setSpeechRate(s.speech_rate ?? 79);
+        setSpeechRate(s.speech_rate ?? 85);
         setAutoCallbackEnabled(s.auto_callback_enabled ?? true);
       })
       .catch((err) => setStatus(`Failed to load: ${err.message}`))

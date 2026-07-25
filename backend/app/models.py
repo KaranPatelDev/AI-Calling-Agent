@@ -70,7 +70,7 @@ class AppSettings(Base):
     id = Column(Integer, primary_key=True)
     buyer_script = Column(Text, nullable=True)
     seller_script = Column(Text, nullable=True)
-    speech_rate = Column(Integer, nullable=False, default=79)
+    speech_rate = Column(Integer, nullable=False, default=85)
     auto_callback_enabled = Column(Boolean, nullable=False, default=True)
 
 
