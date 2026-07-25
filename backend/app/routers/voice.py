@@ -182,19 +182,23 @@ def hangup(
         return {"ok": True}
 
     if HangupCause == "NORMAL_CLEARING":
-        if call.answered_by_machine:
+        rate = _get_speech_rate(db, call)
+        estimated = _estimate_speech_seconds(call.script_text, rate)
+        actual = int(Duration) if Duration.isdigit() else None
+        cut_off = estimated > 3 and actual is not None and actual < estimated * 0.7
+
+        if cut_off:
+            # ponytail: a machine-detected call that hangs up before the script finishes was never
+            # actually recorded start to finish, so it doesn't count as a confirmed voicemail drop —
+            # treat it the same as a human hanging up mid-speech.
+            call.status = CallStatus.CUT_OFF
+            call.error_message = f"Recipient hung up early (~{actual}s of an estimated ~{int(estimated)}s)"
+        elif call.answered_by_machine:
             call.status = CallStatus.VOICEMAIL
             call.error_message = None
         else:
-            rate = _get_speech_rate(db, call)
-            estimated = _estimate_speech_seconds(call.script_text, rate)
-            actual = int(Duration) if Duration.isdigit() else None
-            if estimated > 3 and actual is not None and actual < estimated * 0.7:
-                call.status = CallStatus.CUT_OFF
-                call.error_message = f"Recipient hung up early (~{actual}s of an estimated ~{int(estimated)}s)"
-            else:
-                call.status = CallStatus.COMPLETED
-                call.error_message = None
+            call.status = CallStatus.COMPLETED
+            call.error_message = None
     else:
         status, error_message = _HANGUP_OUTCOMES.get(
             HangupCause, (CallStatus.FAILED, f"Call ended unexpectedly ({HangupCause or 'unknown reason'})")
