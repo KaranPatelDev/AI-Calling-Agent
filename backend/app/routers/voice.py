@@ -1,21 +1,16 @@
-import logging
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form
 from fastapi.responses import Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import audio_cache
 from app.config import settings
 from app.db import get_db
-from app.google_tts import synthesize
 from app.models import AppSettings, Call, CallStatus, InboundCall, InboundCallStatus
 from app.scheduler import schedule_call
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/voice", tags=["voice"])
 
@@ -80,32 +75,19 @@ def answer(call_id: uuid.UUID, db: Session = Depends(get_db)):
     script = _render_script(call) if call else ""
     rate = _get_speech_rate(db, call)
     body = _build_ssml_body(script)
-
-    try:
-        ssml = f'<speak><prosody rate="{rate}%">{body}</prosody></speak>'
-        audio_cache.put(call_id, synthesize(ssml))
-        base = settings.public_base_url.rstrip("/")
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>'
-            f"<Response><Play>{base}/voice/audio/{call_id}</Play></Response>"
-        )
-    except Exception:
-        # ponytail: Google TTS being down/misconfigured shouldn't kill the call — fall back to
-        # Plivo's built-in voice so the script still gets read, just in a lower-quality voice.
-        logger.exception("Google TTS synthesis failed for call %s, falling back to Plivo voice", call_id)
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>'
-            f'<Response><Speak voice="WOMAN" language="hi-IN">{_escape(script)}</Speak></Response>'
-        )
+    # ponytail: reverted from Polly.Kajal (neural) back to the standard Polly.Aditi voice —
+    # Kajal requires Plivo's neural TTS engine, which this Plivo account can't reach reliably
+    # (previously silent calls, then calls hanging up right after pickup once Kajal was
+    # reintroduced). Aditi is standard-engine and known stable. Softened its tone a little with
+    # a slight pitch lift instead, since a genuinely different soft female Hindi voice isn't
+    # available through Plivo without a neural-capable account.
+    plivo_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<Response><Speak voice="Polly.Aditi" language="hi-IN">'
+        f'<prosody rate="{rate}%" pitch="+8%">{body}</prosody>'
+        "</Speak></Response>"
+    )
     return Response(content=plivo_xml, media_type="application/xml")
-
-
-@router.get("/audio/{call_id}")
-def get_audio(call_id: uuid.UUID):
-    data = audio_cache.get(call_id)
-    if data is None:
-        raise HTTPException(status_code=404, detail="Audio not found or already played")
-    return Response(content=data, media_type="audio/mpeg")
 
 
 @router.post("/machine-detection/{call_id}")
@@ -218,8 +200,6 @@ def hangup(
     Duration: str = Form(default=""),
     db: Session = Depends(get_db),
 ):
-    audio_cache.discard(call_id)
-
     call = db.get(Call, call_id)
     if not call:
         return {"ok": True}
