@@ -1,6 +1,7 @@
 import json
 
 from google.cloud import texttospeech
+from google.oauth2 import credentials as user_credentials
 from google.oauth2 import service_account
 
 from app.config import settings
@@ -8,12 +9,20 @@ from app.config import settings
 _client = None
 
 
+def _load_credentials(info: dict):
+    # ponytail: this project's org policy blocks service-account key creation, so
+    # GOOGLE_CREDENTIALS_JSON may hold either a real service account key or an
+    # "authorized_user" credential from `gcloud auth application-default login` — support both.
+    if info.get("type") == "authorized_user":
+        return user_credentials.Credentials.from_authorized_user_info(info)
+    return service_account.Credentials.from_service_account_info(info)
+
+
 def get_client() -> texttospeech.TextToSpeechClient:
     global _client
     if _client is None:
         if settings.google_credentials_json:
-            info = json.loads(settings.google_credentials_json)
-            creds = service_account.Credentials.from_service_account_info(info)
+            creds = _load_credentials(json.loads(settings.google_credentials_json))
             _client = texttospeech.TextToSpeechClient(credentials=creds)
         else:
             _client = texttospeech.TextToSpeechClient()
