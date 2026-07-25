@@ -159,7 +159,7 @@ export default function Dashboard() {
         </div>
         <div className="row">
           <select
-            className="btn-ghost"
+            className="select-download"
             defaultValue=""
             onChange={handleExport}
             disabled={exporting}
