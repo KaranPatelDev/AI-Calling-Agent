@@ -8,7 +8,6 @@ export default function Settings() {
   const [sellerScript, setSellerScript] = useState("");
   const [speechRate, setSpeechRate] = useState(79);
   const [autoCallbackEnabled, setAutoCallbackEnabled] = useState(true);
-  const [missedCallbackScript, setMissedCallbackScript] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
@@ -28,7 +27,6 @@ export default function Settings() {
         setSellerScript(s.seller_script || "");
         setSpeechRate(s.speech_rate ?? 79);
         setAutoCallbackEnabled(s.auto_callback_enabled ?? true);
-        setMissedCallbackScript(s.missed_callback_script || "");
       })
       .catch((err) => setStatus(`Failed to load: ${err.message}`))
       .finally(() => setLoading(false));
@@ -53,7 +51,6 @@ export default function Settings() {
         seller_script: sellerScript,
         speech_rate: Number(speechRate),
         auto_callback_enabled: autoCallbackEnabled,
-        missed_callback_script: missedCallbackScript,
       });
       setStatus("Saved.");
     } catch (err) {
@@ -159,8 +156,9 @@ export default function Settings() {
           <label className="field-label">Automatic missed-callback retry</label>
           <p className="field-hint">
             If someone calls back and the forwarded number doesn't pick up, automatically call them back ~24 hours
-            later (pushed to Monday if that lands on a Sunday) — no approval needed. Turn off anytime to stop new
-            ones from being scheduled.
+            later (pushed to Monday if that lands on a Sunday) — no approval needed. This retry connects them
+            straight to your real phone, like a normal human call — the AI voice doesn't speak on these. Turn off
+            anytime to stop new ones from being scheduled.
           </p>
           <label className="row" style={{ fontWeight: 500 }}>
             <input
@@ -172,12 +170,6 @@ export default function Settings() {
             Enable automatic missed-callback retry
           </label>
         </div>
-
-        <ScriptEditor
-          value={missedCallbackScript}
-          onChange={setMissedCallbackScript}
-          label="Missed-callback script (used automatically, no approval)"
-        />
 
         <div className="row">
           <button type="submit" disabled={saving}>

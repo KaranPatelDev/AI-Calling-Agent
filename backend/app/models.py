@@ -38,6 +38,7 @@ class Call(Base):
     error_message = Column(Text, nullable=True)
     answered_by_machine = Column(Boolean, nullable=False, default=False)
     speech_rate = Column(Integer, nullable=True)  # null = use the global default from AppSettings
+    direct_connect = Column(Boolean, nullable=False, default=False)  # true = dial straight to a human, no AI speech
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -71,7 +72,6 @@ class AppSettings(Base):
     seller_script = Column(Text, nullable=True)
     speech_rate = Column(Integer, nullable=False, default=79)
     auto_callback_enabled = Column(Boolean, nullable=False, default=True)
-    missed_callback_script = Column(Text, nullable=True)
 
 
 class ScriptTemplate(Base):

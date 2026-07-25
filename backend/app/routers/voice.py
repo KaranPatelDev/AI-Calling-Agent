@@ -20,10 +20,6 @@ router = APIRouter(prefix="/voice", tags=["voice"])
 _PLACEHOLDER_RE = re.compile(r"\{\{\s*(name|company|organization)\s*\}\}", re.IGNORECASE)
 _SLOW_RE = re.compile(r"\[\[slow\]\](.*?)\[\[/slow\]\]", re.IGNORECASE | re.DOTALL)
 _MISSED_HANGUP_CAUSES = {"NO_ANSWER", "USER_BUSY", "CALL_REJECTED", "NO_USER_RESPONSE", "NO_ANSWER_TIMEOUT"}
-_DEFAULT_CALLBACK_SCRIPT = (
-    "Hi, we noticed you tried calling us back but we couldn't answer in time. "
-    "We're calling you back now — how can we help?"
-)
 
 
 def _render_script(call: Call) -> str:
@@ -64,6 +60,18 @@ def _estimate_speech_seconds(text: str, rate_pct: int) -> float:
 @router.post("/answer/{call_id}")
 def answer(call_id: uuid.UUID, db: Session = Depends(get_db)):
     call = db.get(Call, call_id)
+
+    if call and call.direct_connect:
+        # ponytail: a missed-callback retry dials the person straight through to your real
+        # phone — no AI script, exactly like a normal human-to-human call.
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            f'<Response><Dial callerId="{settings.plivo_from_number}">'
+            f'<Number>{settings.forward_to_number}</Number>'
+            "</Dial></Response>"
+        )
+        return Response(content=plivo_xml, media_type="application/xml")
+
     script = _render_script(call) if call else ""
     rate = _get_speech_rate(db, call)
     body = _build_ssml_body(script)
@@ -134,16 +142,16 @@ def _schedule_missed_callback(inbound: InboundCall, db: Session):
     if inbound.auto_callback_call_id is not None:
         return  # already scheduled for this inbound call
 
-    script_text = (app_settings.missed_callback_script if app_settings else None) or _DEFAULT_CALLBACK_SCRIPT
     run_at = _next_callback_time(datetime.now(timezone.utc))
     callback_call = Call(
         recipient_name=inbound.matched_name or "Unknown caller",
         organization=inbound.matched_organization,
         audience="buyer",
         phone_number=inbound.from_number,
-        script_text=script_text,
+        script_text="",
         scheduled_at=run_at,
         status=CallStatus.SCHEDULED,
+        direct_connect=True,
     )
     db.add(callback_call)
     db.flush()
