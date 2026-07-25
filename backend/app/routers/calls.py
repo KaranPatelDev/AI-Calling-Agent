@@ -31,12 +31,15 @@ def create_calls(body: CreateCallsRequest, db: Session = Depends(get_db)):
             speech_rate=body.speech_rate,
         )
         db.add(call)
-        db.flush()
-        schedule_call(call.id, run_at)
         created.append(call)
     db.commit()
+    # ponytail: schedule jobs only after commit — an immediate "call now" job can fire within
+    # milliseconds, and execute_call() loads the row in its own DB session/connection. Scheduling
+    # before commit let that background thread race the request's transaction and silently no-op
+    # on an uncommitted row, leaving the call stuck at "pending" forever.
     for call in created:
         db.refresh(call)
+        schedule_call(call.id, run_at)
     return created
 
 
