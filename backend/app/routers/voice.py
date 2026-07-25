@@ -30,6 +30,16 @@ def _render_script(call: Call) -> str:
     return _PLACEHOLDER_RE.sub(replace, call.script_text)
 
 
+def _add_natural_pauses(ssml_fragment: str) -> str:
+    # ponytail: standard (non-neural) Polly voices have no expressiveness controls beyond
+    # rate/pitch — short breaks after punctuation are the main lever left to make delivery
+    # sound paced/natural instead of a flat, rushed readout. Safe to run on the whole fragment
+    # since our escaped text/tags never contain literal '.', '!', '?', or ',' inside a tag.
+    ssml_fragment = re.sub(r'([.!?])(\s|$)', r'\1<break time="300ms"/>\2', ssml_fragment)
+    ssml_fragment = re.sub(r"(,)(\s|$)", r'\1<break time="150ms"/>\2', ssml_fragment)
+    return ssml_fragment
+
+
 def _build_ssml_body(text: str) -> str:
     """Converts [[slow]]...[[/slow]] markers into a nested slower <prosody>, escaping plain segments."""
     parts = []
@@ -40,7 +50,7 @@ def _build_ssml_body(text: str) -> str:
         parts.append(f'<prosody rate="65%">{_escape(m.group(1))}</prosody>')
         last = m.end()
     parts.append(_escape(text[last:]))
-    return "".join(parts)
+    return _add_natural_pauses("".join(parts))
 
 
 def _get_speech_rate(db: Session, call: Call | None = None) -> int:
@@ -75,16 +85,15 @@ def answer(call_id: uuid.UUID, db: Session = Depends(get_db)):
     script = _render_script(call) if call else ""
     rate = _get_speech_rate(db, call)
     body = _build_ssml_body(script)
-    # ponytail: reverted from Polly.Kajal (neural) back to the standard Polly.Aditi voice —
-    # Kajal requires Plivo's neural TTS engine, which this Plivo account can't reach reliably
-    # (previously silent calls, then calls hanging up right after pickup once Kajal was
-    # reintroduced). Aditi is standard-engine and known stable. Softened its tone a little with
-    # a slight pitch lift instead, since a genuinely different soft female Hindi voice isn't
-    # available through Plivo without a neural-capable account.
+    # ponytail: Polly.Aditi (standard engine) is the only Hindi voice Plivo reliably supports —
+    # Kajal (neural) and Google/ElevenLabs alternatives were tried and reverted. Pushed the two
+    # remaining levers as far as reasonable: a modest pitch lift for warmth (much beyond +10%
+    # starts sounding unnatural/chipmunky) and natural pauses after punctuation (_build_ssml_body)
+    # so delivery paces like speech instead of a flat, rushed readout.
     plivo_xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<Response><Speak voice="Polly.Aditi" language="hi-IN">'
-        f'<prosody rate="{rate}%" pitch="+8%">{body}</prosody>'
+        f'<prosody rate="{rate}%" pitch="+10%">{body}</prosody>'
         "</Speak></Response>"
     )
     return Response(content=plivo_xml, media_type="application/xml")
