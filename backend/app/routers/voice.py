@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Form
 from fastapi.responses import Response
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -91,7 +92,15 @@ def inbound_call(
     db: Session = Depends(get_db),
 ):
     """Logs the callback (for interest tracking) and forwards it to your real phone."""
-    match = db.query(Call).filter(Call.phone_number == From).order_by(Call.created_at.desc()).first()
+    # ponytail: Plivo's From arrives without a "+" (e.g. "918160911006") while Call.phone_number
+    # is stored E.164 ("+918160911006") — match on digits only so callbacks resolve to a name.
+    from_digits = re.sub(r"\D", "", From)
+    match = (
+        db.query(Call)
+        .filter(func.regexp_replace(Call.phone_number, r"\D", "", "g") == from_digits)
+        .order_by(Call.created_at.desc())
+        .first()
+    )
     db.add(
         InboundCall(
             from_number=From,
