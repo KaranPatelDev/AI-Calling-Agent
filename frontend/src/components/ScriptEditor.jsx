@@ -21,6 +21,21 @@ export default function ScriptEditor({ value, onChange, label = "Script" }) {
     });
   }
 
+  function wrapSlow() {
+    const el = textareaRef.current;
+    const start = el.selectionStart ?? value.length;
+    const end = el.selectionEnd ?? value.length;
+    const selected = value.slice(start, end);
+    const wrapped = `[[slow]]${selected}[[/slow]]`;
+    const next = value.slice(0, start) + wrapped + value.slice(end);
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const cursor = selected ? start + wrapped.length : start + "[[slow]]".length;
+      el.setSelectionRange(cursor, cursor);
+    });
+  }
+
   return (
     <div className="field-group">
       <label className="field-label">{label}</label>
@@ -38,6 +53,9 @@ export default function ScriptEditor({ value, onChange, label = "Script" }) {
             Insert {p.token} <span style={{ opacity: 0.65 }}>({p.label})</span>
           </button>
         ))}
+        <button type="button" className="btn-secondary btn-sm" onClick={wrapSlow}>
+          Slow down <span style={{ opacity: 0.65 }}>(select text first)</span>
+        </button>
       </div>
       <textarea
         ref={textareaRef}

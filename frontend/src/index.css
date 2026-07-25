@@ -469,6 +469,16 @@ tbody tr:hover {
   color: var(--muted);
 }
 
+.badge-cut_off {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.badge-voicemail {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
 .status {
   color: var(--warning);
   font-size: 0.88rem;

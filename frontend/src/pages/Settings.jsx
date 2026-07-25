@@ -6,6 +6,9 @@ import ScriptEditor from "../components/ScriptEditor.jsx";
 export default function Settings() {
   const [buyerScript, setBuyerScript] = useState("");
   const [sellerScript, setSellerScript] = useState("");
+  const [speechRate, setSpeechRate] = useState(80);
+  const [autoCallbackEnabled, setAutoCallbackEnabled] = useState(true);
+  const [missedCallbackScript, setMissedCallbackScript] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
@@ -23,6 +26,9 @@ export default function Settings() {
       .then((s) => {
         setBuyerScript(s.buyer_script || "");
         setSellerScript(s.seller_script || "");
+        setSpeechRate(s.speech_rate ?? 80);
+        setAutoCallbackEnabled(s.auto_callback_enabled ?? true);
+        setMissedCallbackScript(s.missed_callback_script || "");
       })
       .catch((err) => setStatus(`Failed to load: ${err.message}`))
       .finally(() => setLoading(false));
@@ -42,7 +48,13 @@ export default function Settings() {
     setSaving(true);
     setStatus("");
     try {
-      await api.saveScriptSettings({ buyer_script: buyerScript, seller_script: sellerScript });
+      await api.saveScriptSettings({
+        buyer_script: buyerScript,
+        seller_script: sellerScript,
+        speech_rate: Number(speechRate),
+        auto_callback_enabled: autoCallbackEnabled,
+        missed_callback_script: missedCallbackScript,
+      });
       setStatus("Saved.");
     } catch (err) {
       setStatus(`Failed to save: ${err.message}`);
@@ -123,6 +135,49 @@ export default function Settings() {
       <form className="card form-card" onSubmit={save}>
         <ScriptEditor value={buyerScript} onChange={setBuyerScript} label="Default script — Buyers" />
         <ScriptEditor value={sellerScript} onChange={setSellerScript} label="Default script — Sellers" />
+
+        <div className="field-group">
+          <label className="field-label">Speaking speed</label>
+          <p className="field-hint">
+            Percent of normal speed (lower = slower). Use "Slow down" in the script editor to slow just a phrase
+            further.
+          </p>
+          <div className="row">
+            <input
+              type="number"
+              min="40"
+              max="120"
+              value={speechRate}
+              onChange={(e) => setSpeechRate(e.target.value)}
+              style={{ width: "6rem" }}
+            />
+            <span>%</span>
+          </div>
+        </div>
+
+        <div className="field-group">
+          <label className="field-label">Automatic missed-callback retry</label>
+          <p className="field-hint">
+            If someone calls back and the forwarded number doesn't pick up, automatically call them back ~24 hours
+            later (pushed to Monday if that lands on a Sunday) — no approval needed. Turn off anytime to stop new
+            ones from being scheduled.
+          </p>
+          <label className="row" style={{ fontWeight: 500 }}>
+            <input
+              type="checkbox"
+              checked={autoCallbackEnabled}
+              onChange={(e) => setAutoCallbackEnabled(e.target.checked)}
+              style={{ width: "auto" }}
+            />
+            Enable automatic missed-callback retry
+          </label>
+        </div>
+
+        <ScriptEditor
+          value={missedCallbackScript}
+          onChange={setMissedCallbackScript}
+          label="Missed-callback script (used automatically, no approval)"
+        />
 
         <div className="row">
           <button type="submit" disabled={saving}>

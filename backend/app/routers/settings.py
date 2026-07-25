@@ -29,6 +29,9 @@ def update_scripts(body: ScriptSettings, db: Session = Depends(get_db)):
     row = _get_or_create(db)
     row.buyer_script = body.buyer_script
     row.seller_script = body.seller_script
+    row.speech_rate = body.speech_rate
+    row.auto_callback_enabled = body.auto_callback_enabled
+    row.missed_callback_script = body.missed_callback_script
     db.commit()
     db.refresh(row)
     return row

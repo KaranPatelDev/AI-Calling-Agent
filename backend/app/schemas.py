@@ -46,6 +46,9 @@ class ParsedRecipient(BaseModel):
 class ScriptSettings(BaseModel):
     buyer_script: str | None = None
     seller_script: str | None = None
+    speech_rate: int = 80
+    auto_callback_enabled: bool = True
+    missed_callback_script: str | None = None
 
     class Config:
         from_attributes = True
@@ -58,6 +61,10 @@ class InboundCallOut(BaseModel):
     matched_organization: str | None
     status: str
     duration_seconds: int | None
+    missed: bool
+    auto_callback_call_id: uuid.UUID | None
+    auto_callback_scheduled_at: datetime | None = None
+    auto_callback_status: str | None = None
     created_at: datetime
 
     class Config:

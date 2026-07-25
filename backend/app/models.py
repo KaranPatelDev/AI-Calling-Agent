@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, func
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.db import Base
@@ -14,6 +14,8 @@ class CallStatus:
     FAILED = "failed"
     NO_ANSWER = "no_answer"
     CANCELLED = "cancelled"
+    CUT_OFF = "cut_off"
+    VOICEMAIL = "voicemail"
 
 
 class CallAudience:
@@ -34,6 +36,7 @@ class Call(Base):
     status = Column(String, nullable=False, default=CallStatus.PENDING)
     provider_call_id = Column(String, nullable=True)
     error_message = Column(Text, nullable=True)
+    answered_by_machine = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -53,6 +56,8 @@ class InboundCall(Base):
     provider_call_id = Column(String, nullable=True, index=True)
     status = Column(String, nullable=False, default=InboundCallStatus.RINGING)
     duration_seconds = Column(Integer, nullable=True)
+    missed = Column(Boolean, nullable=False, default=False)
+    auto_callback_call_id = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -63,6 +68,9 @@ class AppSettings(Base):
     id = Column(Integer, primary_key=True)
     buyer_script = Column(Text, nullable=True)
     seller_script = Column(Text, nullable=True)
+    speech_rate = Column(Integer, nullable=False, default=80)
+    auto_callback_enabled = Column(Boolean, nullable=False, default=True)
+    missed_callback_script = Column(Text, nullable=True)
 
 
 class ScriptTemplate(Base):

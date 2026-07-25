@@ -22,5 +22,7 @@ def place_call(call_id, phone_number: str) -> str:
         answer_method="POST",
         hangup_url=f"{base}/voice/hangup/{call_id}",
         hangup_method="POST",
+        machine_detection="true",
+        machine_detection_url=f"{base}/voice/machine-detection/{call_id}",
     )
     return response["request_uuid"]

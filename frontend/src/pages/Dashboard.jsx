@@ -9,6 +9,8 @@ const STATS = [
   { key: "total", label: "Total calls" },
   { key: "completed", label: "Completed" },
   { key: "no_answer", label: "No answer" },
+  { key: "cut_off", label: "Cut off" },
+  { key: "voicemail", label: "Voicemail" },
   { key: "failed", label: "Not placed" },
   { key: "scheduled", label: "Scheduled" },
 ];
@@ -24,6 +26,8 @@ const OUTCOME_OPTIONS = [
   { value: "completed", label: "Successful" },
   { value: "failed", label: "Not placed" },
   { value: "no_answer", label: "No answer" },
+  { value: "cut_off", label: "Cut off" },
+  { value: "voicemail", label: "Voicemail" },
   { value: "scheduled", label: "Scheduled" },
 ];
 
@@ -36,13 +40,17 @@ function matchesOutcome(call, outcomeFilter) {
 function computeStats(calls) {
   const completed = calls.filter((c) => c.status === "completed").length;
   const no_answer = calls.filter((c) => c.status === "no_answer").length;
+  const cut_off = calls.filter((c) => c.status === "cut_off").length;
+  const voicemail = calls.filter((c) => c.status === "voicemail").length;
   const failed = calls.filter((c) => c.status === "failed").length;
-  const attempted = completed + no_answer + failed;
+  const attempted = completed + no_answer + cut_off + voicemail + failed;
   const pct = (n) => (attempted === 0 ? 0 : Math.round((n / attempted) * 100));
   return {
     total: calls.length,
     completed,
     no_answer,
+    cut_off,
+    voicemail,
     failed,
     scheduled: calls.filter((c) => c.status === "scheduled" || c.status === "pending").length,
     attempted,
@@ -221,6 +229,7 @@ export default function Dashboard() {
                 <th>Time</th>
                 <th>Duration</th>
                 <th>Status</th>
+                <th>Callback</th>
               </tr>
             </thead>
             <tbody>
@@ -235,8 +244,18 @@ export default function Dashboard() {
                   <td>{c.duration_seconds != null ? `${c.duration_seconds}s` : "—"}</td>
                   <td>
                     <span className={`badge badge-${c.status === "completed" ? "completed" : "scheduled"}`}>
-                      {c.status}
+                      {c.missed ? "missed" : c.status}
                     </span>
+                  </td>
+                  <td>
+                    {c.auto_callback_scheduled_at ? (
+                      <>
+                        <span className={`badge badge-${c.auto_callback_status}`}>{c.auto_callback_status}</span>{" "}
+                        {new Date(c.auto_callback_scheduled_at).toLocaleString()}
+                      </>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                 </tr>
               ))}
