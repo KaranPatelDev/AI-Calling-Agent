@@ -70,18 +70,6 @@ def _estimate_speech_seconds(text: str, rate_pct: int) -> float:
 @router.post("/answer/{call_id}")
 def answer(call_id: uuid.UUID, db: Session = Depends(get_db)):
     call = db.get(Call, call_id)
-
-    if call and call.direct_connect:
-        # ponytail: a missed-callback retry dials the person straight through to your real
-        # phone — no AI script, exactly like a normal human-to-human call.
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>'
-            f'<Response><Dial callerId="{settings.plivo_from_number}">'
-            f'<Number>{settings.forward_to_number}</Number>'
-            "</Dial></Response>"
-        )
-        return Response(content=plivo_xml, media_type="application/xml")
-
     script = _render_script(call) if call else ""
     rate = _get_speech_rate(db, call)
     body = _build_ssml_body(script)
@@ -143,37 +131,6 @@ def inbound_call(
     return Response(content=plivo_xml, media_type="application/xml")
 
 
-def _next_callback_time(now: datetime) -> datetime:
-    run_at = now + timedelta(hours=24)
-    if run_at.weekday() == 6:  # Sunday -> push to Monday same time
-        run_at += timedelta(days=1)
-    return run_at
-
-
-def _schedule_missed_callback(inbound: InboundCall, db: Session):
-    app_settings = db.get(AppSettings, 1)
-    if app_settings and not app_settings.auto_callback_enabled:
-        return
-    if inbound.auto_callback_call_id is not None:
-        return  # already scheduled for this inbound call
-
-    run_at = _next_callback_time(datetime.now(timezone.utc))
-    callback_call = Call(
-        recipient_name=inbound.matched_name or "Unknown caller",
-        organization=inbound.matched_organization,
-        audience="buyer",
-        phone_number=inbound.from_number,
-        script_text="",
-        scheduled_at=run_at,
-        status=CallStatus.SCHEDULED,
-        direct_connect=True,
-    )
-    db.add(callback_call)
-    db.flush()
-    schedule_call(callback_call.id, run_at)
-    inbound.auto_callback_call_id = callback_call.id
-
-
 @router.post("/inbound-hangup")
 def inbound_hangup(
     CallUUID: str = Form(default=""),
@@ -190,10 +147,42 @@ def inbound_hangup(
         # miss (rang, no real conversation happened) — duration is a more reliable signal here
         # than HangupCause, which reports NORMAL_CLEARING even for very short answered calls.
         inbound.missed = duration <= _MISSED_CALLBACK_SECONDS
-        if inbound.missed:
-            _schedule_missed_callback(inbound, db)
         db.commit()
     return {"ok": True}
+
+
+def _next_retry_time(now: datetime) -> datetime:
+    run_at = now + timedelta(hours=24)
+    if run_at.weekday() == 6:  # Sunday -> push to Monday same time
+        run_at += timedelta(days=1)
+    return run_at
+
+
+def _schedule_no_answer_retry(call: Call, db: Session):
+    # ponytail: retries only the original call, never a retry of a retry — avoids an
+    # indefinite daily-retry chain if the recipient still doesn't pick up the second time.
+    if call.is_retry or call.retry_call_id is not None:
+        return
+    app_settings = db.get(AppSettings, 1)
+    if app_settings and not app_settings.auto_callback_enabled:
+        return
+
+    run_at = _next_retry_time(datetime.now(timezone.utc))
+    retry_call = Call(
+        recipient_name=call.recipient_name,
+        organization=call.organization,
+        audience=call.audience,
+        phone_number=call.phone_number,
+        script_text=call.script_text,
+        scheduled_at=run_at,
+        status=CallStatus.SCHEDULED,
+        speech_rate=call.speech_rate,
+        is_retry=True,
+    )
+    db.add(retry_call)
+    db.flush()
+    schedule_call(retry_call.id, run_at)
+    call.retry_call_id = retry_call.id
 
 
 _HANGUP_OUTCOMES = {
@@ -237,6 +226,8 @@ def hangup(
         )
         call.status = status
         call.error_message = error_message
+        if status == CallStatus.NO_ANSWER:
+            _schedule_no_answer_retry(call, db)
 
     db.commit()
     return {"ok": True}

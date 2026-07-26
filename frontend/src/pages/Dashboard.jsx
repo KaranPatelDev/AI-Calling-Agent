@@ -259,13 +259,17 @@ export default function Dashboard() {
                 <th>Scheduled</th>
                 <th>Status</th>
                 <th>Error</th>
+                <th>Retry</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((c) => (
                 <tr key={c.id}>
-                  <td>{c.recipient_name}</td>
+                  <td>
+                    {c.recipient_name}
+                    {c.is_retry && <span className="audience-tag" style={{ marginLeft: "0.4rem" }}>retry</span>}
+                  </td>
                   <td>{c.organization || "—"}</td>
                   <td>
                     <span className="audience-tag">{c.audience}</span>
@@ -276,6 +280,16 @@ export default function Dashboard() {
                     <span className={`badge badge-${c.status}`}>{c.status.replace("_", " ")}</span>
                   </td>
                   <td>{c.error_message || "—"}</td>
+                  <td>
+                    {c.retry_scheduled_at ? (
+                      <>
+                        <span className={`badge badge-${c.retry_status}`}>{c.retry_status}</span>{" "}
+                        {new Date(c.retry_scheduled_at).toLocaleString()}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td>
                     <button type="button" className="btn-danger btn-sm" onClick={() => handleDelete(c.id)}>
                       Delete
@@ -339,7 +353,6 @@ export default function Dashboard() {
                 <th>Time</th>
                 <th>Duration</th>
                 <th>Status</th>
-                <th>Callback</th>
               </tr>
             </thead>
             <tbody>
@@ -358,16 +371,6 @@ export default function Dashboard() {
                     >
                       {c.status !== "completed" ? "ringing" : c.missed ? "missed" : "completed"}
                     </span>
-                  </td>
-                  <td>
-                    {c.auto_callback_scheduled_at ? (
-                      <>
-                        <span className={`badge badge-${c.auto_callback_status}`}>{c.auto_callback_status}</span>{" "}
-                        {new Date(c.auto_callback_scheduled_at).toLocaleString()}
-                      </>
-                    ) : (
-                      "—"
-                    )}
                   </td>
                 </tr>
               ))}

@@ -55,6 +55,10 @@ class CallOut(BaseModel):
     provider_call_id: str | None
     error_message: str | None
     speech_rate: int | None
+    is_retry: bool
+    retry_call_id: uuid.UUID | None
+    retry_scheduled_at: datetime | None = None
+    retry_status: str | None = None
     created_at: datetime
 
     class Config:
@@ -90,9 +94,6 @@ class InboundCallOut(BaseModel):
     status: str
     duration_seconds: int | None
     missed: bool
-    auto_callback_call_id: uuid.UUID | None
-    auto_callback_scheduled_at: datetime | None = None
-    auto_callback_status: str | None = None
     created_at: datetime
 
     class Config:

@@ -153,12 +153,11 @@ export default function Settings() {
         </div>
 
         <div className="field-group">
-          <label className="field-label">Automatic missed-callback retry</label>
+          <label className="field-label">Automatic no-answer retry</label>
           <p className="field-hint">
-            If someone calls back and the forwarded number doesn't pick up, automatically call them back ~24 hours
-            later (pushed to Monday if that lands on a Sunday) — no approval needed. This retry connects them
-            straight to your real phone, like a normal human call — the AI voice doesn't speak on these. Turn off
-            anytime to stop new ones from being scheduled.
+            If an AI call you placed goes unanswered, automatically retry it once ~24 hours later (pushed to Monday
+            if that lands on a Sunday) — no approval needed, same script as the original. Turn off anytime to stop
+            new ones from being scheduled.
           </p>
           <label className="row" style={{ fontWeight: 500 }}>
             <input
@@ -167,7 +166,7 @@ export default function Settings() {
               onChange={(e) => setAutoCallbackEnabled(e.target.checked)}
               style={{ width: "auto" }}
             />
-            Enable automatic missed-callback retry
+            Enable automatic no-answer retry
           </label>
         </div>
 

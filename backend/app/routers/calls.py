@@ -58,7 +58,17 @@ def create_calls(body: CreateCallsRequest, db: Session = Depends(get_db)):
 
 @router.get("", response_model=list[CallOut])
 def list_calls(db: Session = Depends(get_db)):
-    return db.query(Call).order_by(Call.created_at.desc()).all()
+    calls = db.query(Call).order_by(Call.created_at.desc()).all()
+    out = []
+    for row in calls:
+        data = CallOut.model_validate(row).model_dump()
+        if row.retry_call_id:
+            retry = db.get(Call, row.retry_call_id)
+            if retry:
+                data["retry_scheduled_at"] = retry.scheduled_at
+                data["retry_status"] = retry.status
+        out.append(data)
+    return out
 
 
 @router.get("/export")

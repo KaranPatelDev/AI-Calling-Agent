@@ -38,7 +38,8 @@ class Call(Base):
     error_message = Column(Text, nullable=True)
     answered_by_machine = Column(Boolean, nullable=False, default=False)
     speech_rate = Column(Integer, nullable=True)  # null = use the global default from AppSettings
-    direct_connect = Column(Boolean, nullable=False, default=False)  # true = dial straight to a human, no AI speech
+    is_retry = Column(Boolean, nullable=False, default=False)  # true if this call is an automatic retry
+    retry_call_id = Column(UUID(as_uuid=True), nullable=True)  # set on the original once a retry is scheduled
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -59,7 +60,6 @@ class InboundCall(Base):
     status = Column(String, nullable=False, default=InboundCallStatus.RINGING)
     duration_seconds = Column(Integer, nullable=True)
     missed = Column(Boolean, nullable=False, default=False)
-    auto_callback_call_id = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -71,7 +71,7 @@ class AppSettings(Base):
     buyer_script = Column(Text, nullable=True)
     seller_script = Column(Text, nullable=True)
     speech_rate = Column(Integer, nullable=False, default=85)
-    auto_callback_enabled = Column(Boolean, nullable=False, default=True)
+    auto_callback_enabled = Column(Boolean, nullable=False, default=True)  # auto-retry outbound "no answer" calls
 
 
 class ScriptTemplate(Base):
