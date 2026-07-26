@@ -19,7 +19,7 @@ router = APIRouter(prefix="/voice", tags=["voice"])
 
 _PLACEHOLDER_RE = re.compile(r"\{\{\s*(name|company|organization)\s*\}\}", re.IGNORECASE)
 _SLOW_RE = re.compile(r"\[\[slow\]\](.*?)\[\[/slow\]\]", re.IGNORECASE | re.DOTALL)
-_MISSED_CALLBACK_SECONDS = 5  # a forwarded callback lasting this long or less counts as missed
+_MISSED_CALLBACK_SECONDS = 10  # a forwarded callback lasting this long or less counts as missed
 
 
 def _render_script(call: Call) -> str:
