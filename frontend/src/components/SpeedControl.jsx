@@ -55,6 +55,9 @@ export default function SpeedControl({ value, onChange }) {
       <label className="field-label">Speaking speed (optional)</label>
       <p className="field-hint">
         Leave blank to use your default speed from Settings. 100% = normal speed.
+        Use <strong>Slower</strong> to make the agent speak more clearly on complex calls,
+        or <strong>Faster</strong> to keep the conversation brisk. Only fill in one box —
+        whichever you set will override the default for this call.
       </p>
       <div className="row" style={{ alignItems: "flex-start", gap: "1.5rem" }}>
         <div>
