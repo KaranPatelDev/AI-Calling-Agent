@@ -8,3 +8,6 @@ dist/
 .venv/
 .claude/
 CLIENT_HANDOVER.md
+.kilo/
+
+.vercel

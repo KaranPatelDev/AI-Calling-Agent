@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 Audience = Literal["buyer", "seller"]
 
@@ -40,7 +40,10 @@ class CreateCallsRequest(BaseModel):
     script_text: str
     audience: Audience
     scheduled_at: datetime | None = None
-    speech_rate: int | None = None
+    # Bounds are enforced here, not just in the UI: this value is interpolated straight into
+    # <prosody rate="{rate}%"> for Plivo/Polly, so an out-of-range value (e.g. 500) makes the
+    # provider reject the whole SSML document and the call plays no audio at all.
+    speech_rate: int | None = Field(default=None, ge=40, le=150)
 
 
 class CallOut(BaseModel):
@@ -79,7 +82,7 @@ class ParsedRecipient(BaseModel):
 class ScriptSettings(BaseModel):
     buyer_script: str | None = None
     seller_script: str | None = None
-    speech_rate: int = 85
+    speech_rate: int = Field(default=85, ge=40, le=150)
     auto_callback_enabled: bool = True
 
     class Config:
