@@ -36,6 +36,11 @@ export default function Scheduler() {
   const [loadingUpcoming, setLoadingUpcoming] = useState(true);
   const [upcomingFilter, setUpcomingFilter] = useState("all");
 
+  // inline-edit state for rescheduling a retry call
+  const [editingId, setEditingId] = useState(null);
+  const [editingAt, setEditingAt] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
   async function refreshUpcoming() {
     try {
       const calls = await api.listCalls();
@@ -93,10 +98,125 @@ export default function Scheduler() {
   async function handleCancel(id) {
     try {
       await api.cancelCall(id);
+      if (editingId === id) setEditingId(null);
       refreshUpcoming();
     } catch (err) {
       setStatus(`Cancel failed: ${err.message}`);
     }
+  }
+
+  function startEdit(call) {
+    setEditingId(call.id);
+    setEditingAt(toLocalInputValue(new Date(call.scheduled_at)));
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditingAt("");
+  }
+
+  async function saveEdit(id) {
+    if (!editingAt) return;
+    setEditSaving(true);
+    try {
+      await api.rescheduleCall(id, new Date(editingAt).toISOString());
+      setEditingId(null);
+      setEditingAt("");
+      refreshUpcoming();
+    } catch (err) {
+      setStatus(`Reschedule failed: ${err.message}`);
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  const regularCalls = upcoming.filter((c) => !c.is_retry);
+  const retryCalls = upcoming.filter((c) => c.is_retry);
+
+  function applyFilter(list) {
+    return upcomingFilter === "all" ? list : list.filter((c) => c.audience === upcomingFilter);
+  }
+
+  function CallRow({ c, showRetryBadge }) {
+    const isEditing = editingId === c.id;
+    return (
+      <tr key={c.id}>
+        <td>{c.recipient_name}</td>
+        <td>{c.organization || "—"}</td>
+        <td>
+          <span className="audience-tag">{c.audience}</span>
+          {showRetryBadge && (
+            <span className="audience-tag" style={{ marginLeft: "0.35rem", background: "#fef3c7", color: "#92400e" }}>
+              auto-retry
+            </span>
+          )}
+        </td>
+        <td>{c.phone_number}</td>
+        <td>
+          {isEditing ? (
+            <div className="row" style={{ gap: "0.4rem", flexWrap: "wrap" }}>
+              <input
+                type="datetime-local"
+                value={editingAt}
+                onChange={(e) => setEditingAt(e.target.value)}
+                style={{ fontSize: "0.85rem" }}
+              />
+              <button
+                type="button"
+                className="btn-sm"
+                disabled={editSaving}
+                onClick={() => saveEdit(c.id)}
+              >
+                {editSaving ? "Saving…" : "Save"}
+              </button>
+              <button type="button" className="btn-secondary btn-sm" onClick={cancelEdit}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            new Date(c.scheduled_at).toLocaleString()
+          )}
+        </td>
+        <td>
+          <div className="row" style={{ gap: "0.4rem", justifyContent: "flex-end" }}>
+            {!isEditing && (
+              <button type="button" className="btn-secondary btn-sm" onClick={() => startEdit(c)}>
+                Edit time
+              </button>
+            )}
+            <button type="button" className="btn-danger btn-sm" onClick={() => handleCancel(c.id)}>
+              Cancel
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  function CallTable({ calls, showRetryBadge, emptyText }) {
+    const filtered = applyFilter(calls);
+    if (filtered.length === 0) {
+      return <div className="empty-state">{emptyText}</div>;
+    }
+    return (
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Organization</th>
+            <th>Audience</th>
+            <th>Phone</th>
+            <th>Runs at</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map((c) => (
+            <CallRow key={c.id} c={c} showRetryBadge={showRetryBadge} />
+          ))}
+        </tbody>
+      </table>
+    );
   }
 
   return (
@@ -143,9 +263,12 @@ export default function Scheduler() {
         </div>
       </form>
 
-      <div className="topbar">
+      <div className="topbar" style={{ marginTop: "1.5rem" }}>
         <div>
           <h1 style={{ fontSize: "1.15rem" }}>Upcoming scheduled calls</h1>
+          <p style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+            Manually scheduled calls waiting to fire.
+          </p>
         </div>
       </div>
 
@@ -155,44 +278,25 @@ export default function Scheduler() {
         {loadingUpcoming ? (
           <div className="empty-state">Loading…</div>
         ) : (
-          (() => {
-            const filtered =
-              upcomingFilter === "all" ? upcoming : upcoming.filter((c) => c.audience === upcomingFilter);
-            return filtered.length === 0 ? (
-              <div className="empty-state">Nothing scheduled right now.</div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Organization</th>
-                    <th>Audience</th>
-                    <th>Phone</th>
-                    <th>Runs at</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((c) => (
-                    <tr key={c.id}>
-                      <td>{c.recipient_name}</td>
-                      <td>{c.organization || "—"}</td>
-                      <td>
-                        <span className="audience-tag">{c.audience}</span>
-                      </td>
-                      <td>{c.phone_number}</td>
-                      <td>{new Date(c.scheduled_at).toLocaleString()}</td>
-                      <td>
-                        <button type="button" className="btn-danger btn-sm" onClick={() => handleCancel(c.id)}>
-                          Cancel
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            );
-          })()
+          <CallTable calls={regularCalls} showRetryBadge={false} emptyText="Nothing scheduled right now." />
+        )}
+      </div>
+
+      <div className="topbar" style={{ marginTop: "1.5rem" }}>
+        <div>
+          <h1 style={{ fontSize: "1.15rem" }}>Auto-rescheduled calls</h1>
+          <p style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+            Calls automatically queued 24 h later because the recipient didn't answer. You can
+            edit the time or cancel any of these.
+          </p>
+        </div>
+      </div>
+
+      <div className="table-card">
+        {loadingUpcoming ? (
+          <div className="empty-state">Loading…</div>
+        ) : (
+          <CallTable calls={retryCalls} showRetryBadge emptyText="No auto-rescheduled calls." />
         )}
       </div>
     </div>

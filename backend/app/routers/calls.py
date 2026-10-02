@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.auth import require_api_key
 from app.db import get_db
 from app.models import Call, CallStatus
-from app.schemas import CallOut, CreateCallsRequest
+from app.schemas import CallOut, CreateCallsRequest, PatchCallRequest
 from app.scheduler import cancel_call, schedule_call
 
 router = APIRouter(prefix="/api/calls", tags=["calls"], dependencies=[Depends(require_api_key)])
@@ -144,6 +144,23 @@ def delete_call(call_id: uuid.UUID, db: Session = Depends(get_db)):
     db.delete(call)
     db.commit()
     return {"ok": True}
+
+
+@router.patch("/{call_id}", response_model=CallOut)
+def patch_call(call_id: uuid.UUID, body: PatchCallRequest, db: Session = Depends(get_db)):
+    """Reschedules a pending/scheduled call to a new time."""
+    call = db.get(Call, call_id)
+    if call is None:
+        raise HTTPException(status_code=404, detail="Call not found")
+    if call.status not in (CallStatus.PENDING, CallStatus.SCHEDULED):
+        raise HTTPException(status_code=400, detail="Can only reschedule a pending or scheduled call")
+    cancel_call(call.id)
+    call.scheduled_at = body.scheduled_at
+    call.status = CallStatus.SCHEDULED
+    db.commit()
+    db.refresh(call)
+    schedule_call(call.id, body.scheduled_at)
+    return CallOut.model_validate(call)
 
 
 @router.delete("")

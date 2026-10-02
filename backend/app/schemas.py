@@ -117,3 +117,7 @@ class ScriptTemplateOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PatchCallRequest(BaseModel):
+    scheduled_at: datetime

@@ -27,6 +27,8 @@ export const api = {
   listInboundCalls: () => request("/api/inbound-calls"),
   createCalls: (payload) => request("/api/calls", { method: "POST", body: JSON.stringify(payload) }),
   cancelCall: (id) => request(`/api/calls/${id}`, { method: "DELETE" }),
+  rescheduleCall: (id, scheduled_at) =>
+    request(`/api/calls/${id}`, { method: "PATCH", body: JSON.stringify({ scheduled_at }) }),
   clearCallHistory: () => request("/api/calls", { method: "DELETE" }),
   deleteCallsBulk: async (outcome, audience) => {
     const params = new URLSearchParams({ outcome });
